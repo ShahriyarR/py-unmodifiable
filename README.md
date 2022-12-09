@@ -28,7 +28,7 @@ Well it seems to be something cryptic to you - but the idea is quite simple:
 Whenever you need to return a List - create immutable/unmodifiable copy of original List and return it back.
 In other words, do not share/return mutable objects - it can be mutated and used by lovely attacker guy.
 You can of course, return back the deep copy, but as the original book states - it will give a feel or taste that the data can be mutated.
-With Unmodifiable Lists - the user/attacker will lose the appetite :)
+With Unmodifiable Lists - the user/attacker loses the appetite :)
 ```
 
 # How we can achieve the same concept in Python?
@@ -118,6 +118,88 @@ class Orders:
         with unmodifiable_list(self, "__removed_order_items"):
             return self.removed_order_items
 ```
+
+# About the Usage
+
+Now let's test it a bit:
+
+```py
+>>> orders = Orders()
+>>> orders.get_order_items()
+>>> orders_ = orders.get_order_items()
+>>> orders_
+['New Order 1', 'New Order 2']
+```
+
+* If you try to append or change the data:
+
+```py
+>>> orders_.append("new value")
+...
+unmodifiable.unmodifiable.UnsupportedOperationException: Not allowed on protected object
+
+>>> orders_[0] = "New Value"
+...
+unmodifiable.unmodifiable.UnsupportedOperationException: Not allowed on protected object
+```
+
+* Trying to access non-typed public object, as a recall, I am going to provide the portion of the class here again:
+
+```py
+class Orders:
+
+    order_items: ImmutableList = []
+    old_items = []  # no type hint or wrong type hint provided
+    removed_order_items: ImmutableList = []
+
+    def get_old_items(self):
+        # This should fail as the corresponding public name has no type hint - it should be ImmutableList
+        with unmodifiable_list(self, "__old_items") as unmodifiable:
+            return unmodifiable
+```
+
+If you try to get back `old_items`, it will fail it is not typed as ImmutableList:
+
+```py
+>>> orders.get_old_items()
+...
+AttributeError: Could not find corresponding public field in origin class or it is not type of ImmutableList
+```
+
+* Trying to get back unmodifiable  `__failed_items` will also fail as it has no corresponding public `failed_items` object.
+
+```py
+class Orders:
+
+    order_items: ImmutableList = []
+    old_items = []  # no type hint or wrong type hint provided
+    removed_order_items: ImmutableList = []
+
+    def __init__(self):
+        self.__order_items = ["New Order 1", "New Order 2"]
+        self.__failed_items = ["Failed Order 1", "Failed Order 2"]
+        self.__old_items = ["Old Item 1", "Old Item 2"]
+        self.__removed_order_items = ["Removed 1", "Removed 2"]
+
+    def get_failed_items(self):
+        # This should fail as there is no corresponding public name
+        with unmodifiable_list(self, "__failed_items") as unmodifiable:
+            return unmodifiable
+```
+
+The result:
+
+```py
+>>> orders.get_failed_items()
+...
+AttributeError: Could not find corresponding public field in origin class or it is not type of ImmutableList
+```
+
+As you see, we have defined strict rules about our class structure which is a key for ensuring integrity.
+
+Also, defining predefined rules on "How we write classes" or "How secrets should be passed" 
+will ensure "Secure by Design" concept beforehand - which is quite powerful mechanism to think about when we write the software.
+
 
 # How to install for development?
 
